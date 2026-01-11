@@ -43,12 +43,13 @@ export interface NoteData {
   [date: string]: string;
 }
 
-export type ViewState = 'calendar' | 'expenses' | 'diary' | 'savings' | 'health' | 'custom' | 'summary';
+export type ViewState = 'calendar' | 'expenses' | 'diary' | 'savings' | 'health' | 'custom' | 'summary' | 'monthlyNotes';
 
 export interface AppState {
   expenses: MonthlyExpenses;
   savings: Savings;
   notes: NoteData;
+  monthlyNotes: NoteData;
   health: HealthData;
   customTables: AnnualCustomTables;
 }

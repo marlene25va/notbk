@@ -8,7 +8,8 @@ import {
   Plus, 
   X,
   Trash2,
-  ChevronLeft as BackIcon
+  ChevronLeft as BackIcon,
+  BookOpen
 } from 'lucide-react';
 import { 
   format, 
@@ -20,7 +21,6 @@ import {
   getDay, 
   addDays
 } from 'date-fns';
-// Fix: Import locale directly from its subpath to avoid potential index export issues in date-fns/locale
 import { es } from 'date-fns/locale/es';
 import { AppState, ViewState, NoteData, MonthlyExpenses, Savings, HealthData, CustomTable } from './types';
 import { loadData, saveData } from './utils/storage';
@@ -37,12 +37,15 @@ const App: React.FC = () => {
     saveData(data);
   }, [data]);
 
-  // Fix: use addMonths with negative value to replace potentially missing subMonths export
   const handlePrevMonth = () => setViewDate(addMonths(viewDate, -1));
   const handleNextMonth = () => setViewDate(addMonths(viewDate, 1));
 
   const updateNotes = (dateKey: string, text: string) => {
     setData(prev => ({ ...prev, notes: { ...prev.notes, [dateKey]: text } }));
+  };
+
+  const updateMonthlyNotes = (monthKey: string, text: string) => {
+    setData(prev => ({ ...prev, monthlyNotes: { ...prev.monthlyNotes, [monthKey]: text } }));
   };
 
   const updateExpenses = (monthKey: string, expenses: any[]) => {
@@ -84,6 +87,7 @@ const App: React.FC = () => {
   };
 
   const currentYear = format(viewDate, 'yyyy');
+  const currentMonthKey = format(viewDate, 'yyyy-MM');
   const isAnnualView = ['summary', 'savings', 'health', 'custom'].includes(currentView);
 
   const renderView = () => {
@@ -119,12 +123,18 @@ const App: React.FC = () => {
               {renderCalendarDays()}
             </div>
 
-            <div className="mt-12 flex flex-col items-center">
+            <div className="mt-12 flex flex-col items-center gap-4">
               <button 
                 onClick={() => setCurrentView('expenses')}
                 className="w-full max-w-xs border border-black py-4 text-sm font-medium hover:bg-black hover:text-white transition-all uppercase tracking-widest"
               >
                 Gestor de gastos
+              </button>
+              <button 
+                onClick={() => setCurrentView('monthlyNotes')}
+                className="w-full max-w-xs border border-black py-4 text-sm font-medium hover:bg-black hover:text-white transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                <BookOpen size={16} /> Notas del mes
               </button>
             </div>
           </div>
@@ -140,9 +150,18 @@ const App: React.FC = () => {
             note={data.notes[format(selectedDate!, 'yyyy-MM-dd')] || ''} 
             onUpdate={updateNotes} 
             onBack={() => setCurrentView('calendar')} 
-            // Fix: use addDays with negative value to replace potentially missing subDays export
             onPrevDay={() => setSelectedDate(prev => prev ? addDays(prev, -1) : null)}
             onNextDay={() => setSelectedDate(prev => prev ? addDays(prev, 1) : null)}
+          />
+        );
+
+      case 'monthlyNotes':
+        return (
+          <MonthlyNotesView 
+            date={viewDate} 
+            note={data.monthlyNotes[currentMonthKey] || ''} 
+            onUpdate={updateMonthlyNotes} 
+            onBack={() => setCurrentView('calendar')} 
           />
         );
       
@@ -164,7 +183,6 @@ const App: React.FC = () => {
   };
 
   const renderCalendarDays = () => {
-    // Fix: replace startOfMonth with native JS to resolve missing export
     const start = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
     const end = endOfMonth(viewDate);
     const days = eachDayOfInterval({ start, end });
@@ -204,7 +222,6 @@ const App: React.FC = () => {
         {renderView()}
       </main>
 
-      {/* Navigation only visible in summary and annual sub-screens */}
       {isAnnualView && (
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-8 py-4 flex justify-between items-center max-w-md mx-auto z-50">
           <button 
@@ -236,6 +253,38 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+// --- New Monthly Notes View ---
+
+const MonthlyNotesView: React.FC<{ 
+  date: Date, 
+  note: string, 
+  onUpdate: (m: string, t: string) => void, 
+  onBack: () => void
+}> = ({ date, note, onUpdate, onBack }) => {
+  const monthKey = format(date, 'yyyy-MM');
+  return (
+    <div className="flex flex-col h-full animate-slideIn">
+      <div className="flex items-center gap-4 mb-4">
+        <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><BackIcon size={24} /></button>
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-widest opacity-40 leading-none mb-1">{format(date, 'yyyy', { locale: es })}</span>
+          <h2 className="text-sm font-medium uppercase tracking-widest leading-none">Notas de {format(date, 'MMMM', { locale: es })}</h2>
+        </div>
+      </div>
+      <div className="mt-4 flex-1">
+        <textarea 
+          value={note} 
+          onChange={(e) => onUpdate(monthKey, e.target.value)} 
+          placeholder="Escribe aquí las notas importantes del mes..." 
+          className="w-full h-[65vh] p-4 bg-transparent border-l border-black resize-none leading-relaxed text-lg font-light italic focus:border-l-4 transition-all" 
+        />
+      </div>
+    </div>
+  );
+};
+
+// --- Rest of Sub-components ---
 
 const AnnualSummaryView: React.FC<{ year: string, expensesData: MonthlyExpenses, onBack: () => void }> = ({ year, expensesData, onBack }) => {
   const months = [

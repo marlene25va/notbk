@@ -16,6 +16,7 @@ export const loadData = (): AppState => {
     expenses: {},
     savings: {},
     notes: {},
+    monthlyNotes: {},
     health: {},
     customTables: {},
   };
