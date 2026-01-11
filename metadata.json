@@ -1,0 +1,5 @@
+{
+  "name": "notebk",
+  "description": "Una aplicación minimalista que fusiona calendario, diario, gestor de gastos, ahorros y listas de salud en una interfaz limpia de blanco y negro.",
+  "requestFramePermissions": []
+}
