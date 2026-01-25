@@ -32,6 +32,8 @@ export interface CustomTable {
   title: string;
   col1Title: string;
   col2Title: string;
+  color: string;
+  icon: string;
   rows: { id: string; val1: string; val2: string }[];
 }
 
@@ -43,7 +45,7 @@ export interface NoteData {
   [date: string]: string;
 }
 
-export type ViewState = 'calendar' | 'expenses' | 'diary' | 'savings' | 'health' | 'custom' | 'summary' | 'monthlyNotes';
+export type ViewState = 'calendar' | 'expenses' | 'diary' | 'savings' | 'health' | 'custom' | 'summary' | 'monthlyNotes' | 'customTableDetail';
 
 export interface AppState {
   expenses: MonthlyExpenses;
