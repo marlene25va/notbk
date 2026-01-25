@@ -9,7 +9,32 @@ import {
   X,
   Trash2,
   ChevronLeft as BackIcon,
-  BookOpen
+  BookOpen,
+  ClipboardList,
+  ListTodo,
+  Activity,
+  CalendarCheck,
+  ShoppingCart,
+  Stethoscope,
+  Utensils,
+  Layers,
+  Settings,
+  FileText,
+  LucideIcon,
+  Film,
+  Music,
+  Droplets,
+  ShoppingBag,
+  Coffee,
+  Dumbbell,
+  Book,
+  Plane,
+  Star,
+  Smile,
+  Moon,
+  Wine,
+  Camera,
+  Heart as HeartIcon
 } from 'lucide-react';
 import { 
   format, 
@@ -27,10 +52,43 @@ import { loadData, saveData } from './utils/storage';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
+const ICON_MAP: Record<string, LucideIcon> = {
+  ClipboardList,
+  ListTodo,
+  FileText,
+  CalendarCheck,
+  Activity,
+  Droplets, // Period/Water
+  HeartIcon,
+  Stethoscope,
+  ShoppingCart,
+  ShoppingBag,
+  Film, // Cinema
+  Music,
+  Coffee,
+  Utensils,
+  Dumbbell, // Gym
+  Book,
+  Plane, // Travel
+  Camera,
+  Wine,
+  Moon,
+  Star,
+  Smile,
+  Settings
+};
+
+const COLORS = [
+  '#000000', '#4B5563', '#9CA3AF', 
+  '#EF4444', '#F59E0B', '#10B981', 
+  '#3B82F6', '#8B5CF6', '#EC4899'
+];
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('calendar');
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [data, setData] = useState<AppState>(loadData());
 
   useEffect(() => {
@@ -90,7 +148,7 @@ const App: React.FC = () => {
 
   const currentYear = format(viewDate, 'yyyy');
   const currentMonthKey = format(viewDate, 'yyyy-MM');
-  const isAnnualView = ['summary', 'savings', 'health', 'custom'].includes(currentView);
+  const isAnnualView = ['summary', 'savings', 'health', 'custom', 'customTableDetail'].includes(currentView);
 
   const renderView = () => {
     switch (currentView) {
@@ -174,7 +232,34 @@ const App: React.FC = () => {
         return <HealthView date={viewDate} data={data.health} onUpdate={updateHealth} onBack={() => setCurrentView('summary')} />;
 
       case 'custom':
-        return <CustomTableView year={currentYear} tables={data.customTables[currentYear] || []} onAddTable={addCustomTable} onUpdateRows={updateCustomTableRows} onDeleteTable={deleteCustomTable} onBack={() => setCurrentView('summary')} />;
+        return (
+          <CustomTableView 
+            year={currentYear} 
+            tables={data.customTables[currentYear] || []} 
+            onAddTable={addCustomTable} 
+            onSelectTable={(id) => {
+              setSelectedTableId(id);
+              setCurrentView('customTableDetail');
+            }}
+            onBack={() => setCurrentView('summary')} 
+          />
+        );
+
+      case 'customTableDetail':
+        const table = (data.customTables[currentYear] || []).find(t => t.id === selectedTableId);
+        if (!table) return null;
+        return (
+          <CustomTableDetailView 
+            year={currentYear}
+            table={table}
+            onUpdateRows={updateCustomTableRows}
+            onDeleteTable={(y, id) => {
+              deleteCustomTable(y, id);
+              setCurrentView('custom');
+            }}
+            onBack={() => setCurrentView('custom')}
+          />
+        );
 
       case 'summary':
         return (
@@ -254,7 +339,7 @@ const App: React.FC = () => {
           </button>
           <button 
             onClick={() => setCurrentView('custom')}
-            className={`p-3 transition-transform active:scale-90 ${currentView === 'custom' ? 'scale-110' : 'opacity-40'}`}
+            className={`p-3 transition-transform active:scale-90 ${['custom', 'customTableDetail'].includes(currentView) ? 'scale-110' : 'opacity-40'}`}
           >
             <Plus size={28} strokeWidth={1.5} />
           </button>
@@ -265,6 +350,265 @@ const App: React.FC = () => {
 };
 
 // --- Sub-components ---
+
+const CustomTableView: React.FC<{ 
+  year: string, 
+  tables: CustomTable[], 
+  onAddTable: (y: string, t: CustomTable) => void, 
+  onSelectTable: (id: string) => void,
+  onBack: () => void 
+}> = ({ year, tables, onAddTable, onSelectTable, onBack }) => {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newCol1, setNewCol1] = useState('');
+  const [newCol2, setNewCol2] = useState('');
+  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [selectedIcon, setSelectedIcon] = useState('ClipboardList');
+
+  const handleCreate = () => {
+    if (!newTitle) return;
+    onAddTable(year, { 
+      id: Date.now().toString(), 
+      title: newTitle, 
+      col1Title: newCol1 || 'Columna 1', 
+      col2Title: newCol2 || 'Columna 2', 
+      color: selectedColor,
+      icon: selectedIcon,
+      rows: [] 
+    });
+    setNewTitle(''); setNewCol1(''); setNewCol2(''); 
+    setSelectedColor(COLORS[0]); setSelectedIcon('ClipboardList');
+    setShowAdd(false);
+  };
+
+  return (
+    <div className="flex flex-col h-full animate-slideIn pb-12">
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={onBack}><BackIcon size={24} /></button>
+        <h2 className="text-xl font-light uppercase tracking-widest">Listas {year}</h2>
+      </div>
+
+      <button 
+        onClick={() => setShowAdd(true)} 
+        className="mb-8 border border-dashed border-gray-200 py-4 text-xs font-medium uppercase tracking-widest hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors rounded-sm"
+      >
+        <Plus size={16} /> Crear Nueva Lista
+      </button>
+
+      {showAdd && (
+        <div className="fixed inset-0 bg-white z-[100] p-6 flex flex-col overflow-y-auto animate-fadeIn">
+          <div className="flex justify-between items-center mb-8">
+             <h3 className="text-xl font-light uppercase tracking-widest">Configurar Lista</h3>
+             <button onClick={() => setShowAdd(false)}><X size={28} /></button>
+          </div>
+          <div className="space-y-6">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase font-bold opacity-40">Título</label>
+              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} className="border-b border-black py-2" placeholder="Ej: Registro Menstrual" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold opacity-40">Columna 1</label>
+                <input value={newCol1} onChange={e => setNewCol1(e.target.value)} className="border-b border-black py-2" placeholder="Ej: Fecha" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] uppercase font-bold opacity-40">Columna 2</label>
+                <input value={newCol2} onChange={e => setNewCol2(e.target.value)} className="border-b border-black py-2" placeholder="Ej: Notas" />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="text-[10px] uppercase font-bold opacity-40">Icono</label>
+              <div className="grid grid-cols-5 gap-2">
+                {Object.keys(ICON_MAP).map(iconName => {
+                  const Icon = ICON_MAP[iconName];
+                  return (
+                    <button 
+                      key={iconName}
+                      onClick={() => setSelectedIcon(iconName)}
+                      className={`w-12 h-12 flex items-center justify-center rounded-full transition-all border-2 ${selectedIcon === iconName ? 'bg-gray-100 border-black' : 'bg-white border-transparent hover:bg-gray-50'}`}
+                    >
+                      <Icon size={20} color="black" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="text-[10px] uppercase font-bold opacity-40">Color de Acento</label>
+              <div className="flex flex-wrap gap-2">
+                {COLORS.map(color => (
+                  <button 
+                    key={color}
+                    onClick={() => setSelectedColor(color)}
+                    className={`w-8 h-8 rounded-full border-2 transition-transform ${selectedColor === color ? 'border-black scale-110' : 'border-transparent'}`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <button onClick={handleCreate} className="w-full bg-black text-white py-4 font-medium uppercase tracking-widest mt-4">Crear Lista</button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {tables.length === 0 ? (
+          <p className="text-center text-sm font-light italic opacity-40 mt-12">No hay listas creadas aún.</p>
+        ) : (
+          tables.map(table => {
+            const Icon = ICON_MAP[table.icon] || ClipboardList;
+            return (
+              <button 
+                key={table.id}
+                onClick={() => onSelectTable(table.id)}
+                className="w-full border border-gray-100 p-4 flex items-center justify-between group hover:bg-gray-50 transition-all rounded-sm"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" style={{ color: table.color }}>
+                    <Icon size={20} />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium uppercase tracking-widest">{table.title}</span>
+                    <span className="text-[10px] uppercase opacity-40">{table.rows.length} registros</span>
+                  </div>
+                </div>
+                <ChevronRight size={18} className="opacity-20 group-hover:opacity-100 transition-opacity" />
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CustomTableDetailView: React.FC<{
+  year: string,
+  table: CustomTable,
+  onUpdateRows: (y: string, tid: string, rows: any[]) => void,
+  onDeleteTable: (y: string, tid: string) => void,
+  onBack: () => void
+}> = ({ year, table, onUpdateRows, onDeleteTable, onBack }) => {
+  const Icon = ICON_MAP[table.icon] || ClipboardList;
+
+  return (
+    <div className="flex flex-col h-full animate-slideIn pb-12">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack}><BackIcon size={24} /></button>
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" style={{ color: table.color }}>
+                <Icon size={20} />
+             </div>
+             <h2 className="text-xl font-light uppercase tracking-widest">{table.title}</h2>
+          </div>
+        </div>
+        <button 
+          onClick={() => {
+            if(confirm('¿Estás seguro de que quieres eliminar esta lista?')) {
+              onDeleteTable(year, table.id);
+            }
+          }} 
+          className="opacity-40 hover:opacity-100 p-2"
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border border-black text-sm">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="border border-black p-2 font-light uppercase text-xs" style={{ borderBottomColor: table.color, borderBottomWidth: '2px' }}>
+                {table.col1Title}
+              </th>
+              <th className="border border-black p-2 font-light uppercase text-xs" style={{ borderBottomColor: table.color, borderBottomWidth: '2px' }}>
+                {table.col2Title}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <EditableTableRows 
+              initialRows={table.rows} 
+              onSave={(rows) => onUpdateRows(year, table.id, rows)} 
+              accentColor={table.color}
+            />
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const EditableTableRows: React.FC<{ 
+  initialRows: any[], 
+  onSave: (rows: any[]) => void,
+  accentColor: string
+}> = ({ initialRows, onSave, accentColor }) => {
+  const [rows, setRows] = useState(initialRows);
+  useEffect(() => { setRows(initialRows); }, [initialRows]);
+  
+  const addRow = () => {
+    const newRows = [...rows, { id: Date.now().toString(), val1: '', val2: '' }];
+    setRows(newRows);
+    onSave(newRows);
+  };
+
+  const updateRow = (id: string, field: string, value: string) => {
+    const updated = rows.map(r => r.id === id ? { ...r, [field]: value } : r);
+    setRows(updated);
+    onSave(updated);
+  };
+
+  const deleteRow = (id: string) => {
+    const updated = rows.filter(r => r.id !== id);
+    setRows(updated);
+    onSave(updated);
+  };
+
+  return (
+    <>
+      {rows.map(row => (
+        <tr key={row.id} className="group">
+          <td className="border border-black p-0">
+            <input 
+              value={row.val1} 
+              onChange={e => updateRow(row.id, 'val1', e.target.value)} 
+              className="w-full p-2 bg-transparent focus:bg-gray-50" 
+            />
+          </td>
+          <td className="border border-black p-0 relative">
+            <input 
+              value={row.val2} 
+              onChange={e => updateRow(row.id, 'val2', e.target.value)} 
+              className="w-full p-2 bg-transparent focus:bg-gray-50" 
+            />
+            <button 
+              onClick={() => deleteRow(row.id)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white"
+            >
+              <X size={12} />
+            </button>
+          </td>
+        </tr>
+      ))}
+      <tr>
+        <td colSpan={2} className="p-0">
+          <button 
+            onClick={addRow} 
+            className="w-full py-4 hover:bg-gray-50 text-[10px] uppercase font-bold tracking-widest transition-colors flex items-center justify-center gap-2"
+            style={{ color: accentColor }}
+          >
+            <Plus size={12} /> Añadir Fila
+          </button>
+        </td>
+      </tr>
+    </>
+  );
+};
 
 const MonthlyNotesView: React.FC<{ 
   date: Date, 
@@ -551,107 +895,6 @@ const HealthView: React.FC<{ date: Date, data: HealthData, onUpdate: (y: string,
         ))}
       </div>
     </div>
-  );
-};
-
-const CustomTableView: React.FC<{ year: string, tables: CustomTable[], onAddTable: (y: string, t: CustomTable) => void, onUpdateRows: (y: string, tid: string, rows: any[]) => void, onDeleteTable: (y: string, tid: string) => void, onBack: () => void }> = ({ year, tables, onAddTable, onUpdateRows, onDeleteTable, onBack }) => {
-  const [showAdd, setShowAdd] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newCol1, setNewCol1] = useState('');
-  const [newCol2, setNewCol2] = useState('');
-  const handleCreate = () => {
-    if (!newTitle) return;
-    onAddTable(year, { id: Date.now().toString(), title: newTitle, col1Title: newCol1 || 'Columna 1', col2Title: newCol2 || 'Columna 2', rows: [] });
-    setNewTitle(''); setNewCol1(''); setNewCol2(''); setShowAdd(false);
-  };
-  return (
-    <div className="flex flex-col h-full animate-slideIn pb-12">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={onBack}><BackIcon size={24} /></button>
-        <h2 className="text-xl font-light uppercase tracking-widest">Tablas {year}</h2>
-      </div>
-      <button onClick={() => setShowAdd(true)} className="mb-8 border border-dashed border-black py-4 text-xs font-medium uppercase tracking-widest hover:bg-gray-50 flex items-center justify-center gap-2">
-        <Plus size={16} /> Nueva Tabla
-      </button>
-      {showAdd && (
-        <div className="fixed inset-0 bg-white z-[100] p-6 flex flex-col animate-fadeIn">
-          <button onClick={() => setShowAdd(false)} className="self-end mb-8"><X size={32} /></button>
-          <h3 className="text-2xl font-light mb-8 uppercase tracking-widest text-center">Configurar Tabla</h3>
-          <div className="space-y-6">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold">Título de la Tabla</label>
-              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} className="border-b border-black py-2" placeholder="Ej: Registro Menstrual" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold">Título Columna 1</label>
-              <input value={newCol1} onChange={e => setNewCol1(e.target.value)} className="border-b border-black py-2" placeholder="Ej: Fecha" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] uppercase font-bold">Título Columna 2</label>
-              <input value={newCol2} onChange={e => setNewCol2(e.target.value)} className="border-b border-black py-2" placeholder="Ej: Observaciones" />
-            </div>
-            <button onClick={handleCreate} className="w-full bg-black text-white py-4 font-medium uppercase tracking-widest mt-8">Crear Tabla</button>
-          </div>
-        </div>
-      )}
-      <div className="space-y-12">
-        {tables.map(table => (
-          <div key={table.id} className="animate-fadeIn relative group">
-            <div className="flex justify-between items-center border-b border-black mb-4">
-              <h3 className="text-lg font-medium uppercase tracking-widest">{table.title}</h3>
-              <button onClick={() => onDeleteTable(year, table.id)} className="opacity-20 group-hover:opacity-100 transition-opacity p-2"><Trash2 size={16} /></button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border border-black text-sm">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="border border-black p-2 font-light uppercase text-xs">{table.col1Title}</th>
-                    <th className="border border-black p-2 font-light uppercase text-xs">{table.col2Title}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <EditableTableRows initialRows={table.rows} onSave={(rows) => onUpdateRows(year, table.id, rows)} />
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const EditableTableRows: React.FC<{ initialRows: any[], onSave: (rows: any[]) => void }> = ({ initialRows, onSave }) => {
-  const [rows, setRows] = useState(initialRows);
-  useEffect(() => { setRows(initialRows); }, [initialRows]);
-  const addRow = () => {
-    const newRows = [...rows, { id: Date.now().toString(), val1: '', val2: '' }];
-    setRows(newRows);
-    onSave(newRows);
-  };
-  const updateRow = (id: string, field: string, value: string) => {
-    const updated = rows.map(r => r.id === id ? { ...r, [field]: value } : r);
-    setRows(updated);
-    onSave(updated);
-  };
-  return (
-    <>
-      {rows.map(row => (
-        <tr key={row.id}>
-          <td className="border border-black p-0">
-            <input value={row.val1} onChange={e => updateRow(row.id, 'val1', e.target.value)} className="w-full p-2 bg-transparent" />
-          </td>
-          <td className="border border-black p-0">
-            <input value={row.val2} onChange={e => updateRow(row.id, 'val2', e.target.value)} className="w-full p-2 bg-transparent" />
-          </td>
-        </tr>
-      ))}
-      <tr>
-        <td colSpan={2} className="p-0">
-          <button onClick={addRow} className="w-full py-2 hover:bg-gray-50 text-[10px] uppercase font-bold tracking-widest">+ Añadir Fila</button>
-        </td>
-      </tr>
-    </>
   );
 };
 
