@@ -39,6 +39,8 @@ const App: React.FC = () => {
 
   const handlePrevMonth = () => setViewDate(addMonths(viewDate, -1));
   const handleNextMonth = () => setViewDate(addMonths(viewDate, 1));
+  const handlePrevYear = () => setViewDate(addMonths(viewDate, -12));
+  const handleNextYear = () => setViewDate(addMonths(viewDate, 12));
 
   const updateNotes = (dateKey: string, text: string) => {
     setData(prev => ({ ...prev, notes: { ...prev.notes, [dateKey]: text } }));
@@ -175,7 +177,15 @@ const App: React.FC = () => {
         return <CustomTableView year={currentYear} tables={data.customTables[currentYear] || []} onAddTable={addCustomTable} onUpdateRows={updateCustomTableRows} onDeleteTable={deleteCustomTable} onBack={() => setCurrentView('summary')} />;
 
       case 'summary':
-        return <AnnualSummaryView year={currentYear} expensesData={data.expenses} onBack={() => setCurrentView('calendar')} />;
+        return (
+          <AnnualSummaryView 
+            year={currentYear} 
+            expensesData={data.expenses} 
+            onBack={() => setCurrentView('calendar')} 
+            onPrevYear={handlePrevYear}
+            onNextYear={handleNextYear}
+          />
+        );
 
       default:
         return null;
@@ -254,7 +264,7 @@ const App: React.FC = () => {
   );
 };
 
-// --- New Monthly Notes View ---
+// --- Sub-components ---
 
 const MonthlyNotesView: React.FC<{ 
   date: Date, 
@@ -284,9 +294,13 @@ const MonthlyNotesView: React.FC<{
   );
 };
 
-// --- Rest of Sub-components ---
-
-const AnnualSummaryView: React.FC<{ year: string, expensesData: MonthlyExpenses, onBack: () => void }> = ({ year, expensesData, onBack }) => {
+const AnnualSummaryView: React.FC<{ 
+  year: string, 
+  expensesData: MonthlyExpenses, 
+  onBack: () => void,
+  onPrevYear: () => void,
+  onNextYear: () => void
+}> = ({ year, expensesData, onBack, onPrevYear, onNextYear }) => {
   const months = [
     { name: 'Enero', key: '01' }, { name: 'Febrero', key: '02' }, { name: 'Marzo', key: '03' },
     { name: 'Abril', key: '04' }, { name: 'Mayo', key: '05' }, { name: 'Junio', key: '06' },
@@ -318,9 +332,16 @@ const AnnualSummaryView: React.FC<{ year: string, expensesData: MonthlyExpenses,
 
   return (
     <div className="flex flex-col h-full animate-slideIn pb-12">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={onBack}><BackIcon size={24} /></button>
-        <h2 className="text-xl font-light uppercase tracking-widest">Resumen {year}</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><BackIcon size={24} /></button>
+          <h2 className="text-xl font-light uppercase tracking-widest">Resumen</h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={onPrevYear} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronLeft size={20} /></button>
+          <span className="text-xl font-medium tracking-tighter">{year}</span>
+          <button onClick={onNextYear} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronRight size={20} /></button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-black text-[10px] sm:text-xs">
