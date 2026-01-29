@@ -6,6 +6,16 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https'
+  },
+  plugins: {
+    SistemBars: {
+      insetsHandling: 'disable'
+    },
+    EdgeToEdge: {
+      backgroundColor: '#ffffff',
+      navigationBarColor: '#000000',
+      statusBarColor: '#ffffff'
+    }
   }
 };
 

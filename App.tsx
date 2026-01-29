@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  PiggyBank, 
-  Heart, 
-  Plus, 
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
+import {
+  ChevronLeft,
+  ChevronRight,
+  PiggyBank,
+  Heart,
+  Plus,
   X,
   Trash2,
   ChevronLeft as BackIcon,
@@ -94,6 +95,41 @@ const App: React.FC = () => {
   useEffect(() => {
     saveData(data);
   }, [data]);
+
+  // Handle Android back button
+  useEffect(() => {
+    const handleBackButton = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      // Define back navigation based on current view
+      switch (currentView) {
+        case 'calendar':
+          // On main view, exit the app
+          CapacitorApp.exitApp();
+          break;
+        case 'expenses':
+        case 'diary':
+        case 'monthlyNotes':
+          setCurrentView('calendar');
+          break;
+        case 'summary':
+          setCurrentView('calendar');
+          break;
+        case 'savings':
+        case 'health':
+        case 'custom':
+          setCurrentView('summary');
+          break;
+        case 'customTableDetail':
+          setCurrentView('custom');
+          break;
+        default:
+          setCurrentView('calendar');
+      }
+    });
+
+    return () => {
+      handleBackButton.then(listener => listener.remove());
+    };
+  }, [currentView]);
 
   const handlePrevMonth = () => setViewDate(addMonths(viewDate, -1));
   const handleNextMonth = () => setViewDate(addMonths(viewDate, 1));
