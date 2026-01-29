@@ -45,7 +45,7 @@ export interface NoteData {
   [date: string]: string;
 }
 
-export type ViewState = 'calendar' | 'expenses' | 'diary' | 'savings' | 'health' | 'custom' | 'summary' | 'monthlyNotes' | 'customTableDetail';
+export type ViewState = 'calendar' | 'expenses' | 'diary' | 'savings' | 'health' | 'custom' | 'summary' | 'monthlyNotes' | 'customTableDetail' | 'settings';
 
 export interface AppState {
   expenses: MonthlyExpenses;

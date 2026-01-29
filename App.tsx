@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import {
   ChevronLeft,
@@ -35,7 +35,9 @@ import {
   Moon,
   Wine,
   Camera,
-  Heart as HeartIcon
+  Heart as HeartIcon,
+  Download,
+  Upload
 } from 'lucide-react';
 import { 
   format, 
@@ -50,6 +52,7 @@ import {
 import { es } from 'date-fns/locale/es';
 import { AppState, ViewState, NoteData, MonthlyExpenses, Savings, HealthData, CustomTable } from './types';
 import { loadData, saveData } from './utils/storage';
+import { exportBackup, importBackup, applyBackup } from './utils/backup';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -91,6 +94,7 @@ const App: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [data, setData] = useState<AppState>(loadData());
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     saveData(data);
@@ -108,6 +112,7 @@ const App: React.FC = () => {
         case 'expenses':
         case 'diary':
         case 'monthlyNotes':
+        case 'settings':
           setCurrentView('calendar');
           break;
         case 'summary':
@@ -180,6 +185,29 @@ const App: React.FC = () => {
       const updatedTables = yearTables.filter(t => t.id !== tableId);
       return { ...prev, customTables: { ...prev.customTables, [yearKey]: updatedTables } };
     });
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    const result = await exportBackup();
+    setIsExporting(false);
+    if (!result.success && result.error) {
+      alert(result.error);
+    }
+  };
+
+  const handleImport = async (file: File) => {
+    const result = await importBackup(file);
+    if (result.success && result.data) {
+      if (confirm('¿Estás seguro de que quieres restaurar este respaldo? Esto reemplazará todos tus datos actuales.')) {
+        applyBackup(result.data);
+        setData(result.data);
+        setCurrentView('calendar');
+        alert('Datos restaurados correctamente');
+      }
+    } else {
+      alert(result.error || 'Error al importar el respaldo');
+    }
   };
 
   const currentYear = format(viewDate, 'yyyy');
@@ -299,12 +327,22 @@ const App: React.FC = () => {
 
       case 'summary':
         return (
-          <AnnualSummaryView 
-            year={currentYear} 
-            expensesData={data.expenses} 
-            onBack={() => setCurrentView('calendar')} 
+          <AnnualSummaryView
+            year={currentYear}
+            expensesData={data.expenses}
+            onBack={() => setCurrentView('calendar')}
             onPrevYear={handlePrevYear}
             onNextYear={handleNextYear}
+          />
+        );
+
+      case 'settings':
+        return (
+          <SettingsView
+            onBack={() => setCurrentView('calendar')}
+            onExport={handleExport}
+            onImport={handleImport}
+            isExporting={isExporting}
           />
         );
 
@@ -345,8 +383,14 @@ const App: React.FC = () => {
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-white text-black flex flex-col p-6 pb-24 select-none">
-      <header className="mb-8 pt-4">
+      <header className="mb-8 pt-4 relative">
         <h1 className="text-3xl font-light tracking-tighter text-center cursor-pointer" onClick={() => setCurrentView('calendar')}>notebk</h1>
+        <button
+          onClick={() => setCurrentView('settings')}
+          className="absolute right-0 top-1/2 -translate-y-1/2 p-2 opacity-40 hover:opacity-100 transition-opacity"
+        >
+          <Settings size={20} />
+        </button>
       </header>
 
       <main className="flex-1 overflow-y-auto">
@@ -929,6 +973,75 @@ const HealthView: React.FC<{ date: Date, data: HealthData, onUpdate: (y: string,
             <button onClick={() => handleDelete(item.id)} className="text-gray-300 hover:text-black"><Trash2 size={16} /></button>
           </div>
         ))}
+      </div>
+    </div>
+  );
+};
+
+const SettingsView: React.FC<{
+  onBack: () => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
+  isExporting: boolean;
+}> = ({ onBack, onExport, onImport, isExporting }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onImport(file);
+      // Reset input para permitir seleccionar el mismo archivo otra vez
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full animate-slideIn">
+      <div className="flex items-center gap-4 mb-8">
+        <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+          <BackIcon size={24} />
+        </button>
+        <h2 className="text-xl font-light uppercase tracking-widest">Configuración</h2>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-4">
+            Respaldo de datos
+          </h3>
+
+          <div className="space-y-3">
+            <button
+              onClick={onExport}
+              disabled={isExporting}
+              className="w-full border border-black py-4 text-sm font-medium hover:bg-black hover:text-white transition-all uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              <Download size={18} />
+              {isExporting ? 'Exportando...' : 'Exportar datos'}
+            </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border border-black py-4 text-sm font-medium hover:bg-black hover:text-white transition-all uppercase tracking-widest flex items-center justify-center gap-3"
+            >
+              <Upload size={18} />
+              Importar datos
+            </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+          </div>
+
+          <p className="text-xs text-gray-400 mt-6 leading-relaxed">
+            Exporta tus datos para crear un respaldo que puedes guardar en tu dispositivo o compartir.
+            Importa un archivo de respaldo para restaurar tus datos. Esto reemplazará todos los datos actuales.
+          </p>
+        </div>
       </div>
     </div>
   );
