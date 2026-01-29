@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx @capacitor/assets generate:*)",
+      "Bash(dir:*)"
+    ]
+  }
+}
